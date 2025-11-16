@@ -17,18 +17,30 @@ namespace ImageProc
     // ---- 1) エッジ点（Edgel / Edge vertex） ------------------------------------
     // 用語：position(=cv::Point2d), orientation[rad] ∈ [-π, π], magnitude(|∇I|)
     struct EdgeVertex {
-        cv::Point2d pos;     // subpixel OK
-        double      orientation; // radians [-pi, pi]
-        double      magnitude;   // gradient magnitude (|∇I|)
+        cv::Point2d pos;
+        double      orientation;
+        double      magnitude;
 
-        EdgeVertex() = default;
-        EdgeVertex(double x, double y, double theta, double mag)
-            : pos{ x, y }, orientation(theta), magnitude(mag) {
+        // 🔥 すべてのメンバをここで初期化する（VS の誤検出に最も強い書き方）
+        EdgeVertex() noexcept
+        {
+            pos.x = 0.0;
+            pos.y = 0.0;
+            orientation = 0.0;
+            magnitude = 0.0;
         }
-        EdgeVertex(const cv::Point2d& p, double theta, double mag)
-            : pos{ p }, orientation(theta), magnitude(mag) {
+
+        EdgeVertex(double x, double y, double theta, double mag) noexcept
+            : pos(x, y), orientation(theta), magnitude(mag)
+        {
+        }
+
+        EdgeVertex(const cv::Point2d& p, double theta, double mag) noexcept
+            : pos(p), orientation(theta), magnitude(mag)
+        {
         }
     };
+
 
     // ---- 2) エッジ線（Polyline）とその集合（Polylines） -------------------------
     using Polyline = std::vector<EdgeVertex>;
