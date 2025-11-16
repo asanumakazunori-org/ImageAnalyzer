@@ -252,9 +252,9 @@ void EdgeDetector::calcEdgeAmpDir(
     cv::Mat& edgeAmp,
     cv::Mat& edgeDir,
     cv::Mat& edgeCode,
-    double sigma,
+    const double sigma,
     const cv::Rect& roi,
-    int quantizeDirections)
+    const int32_t quantizeDirections)
 {
     CV_Assert(srcGray.channels() == 1);
     CV_Assert(quantizeDirections == 4 || quantizeDirections == 8);

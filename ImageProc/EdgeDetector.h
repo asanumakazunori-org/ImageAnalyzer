@@ -140,15 +140,25 @@ namespace ImageProc
             const cv::Rect& roi = {}
         );
 
-        // 勾配強度・方向・方位コード（4/8方向量子化）
+        /**
+         * @brief 勾配強度・方向・方位コード（4 / 8方向量子化）
+         * 
+         * @param [in] srcGray      CV_8U or CV_16U
+         * @param [out] edgeAmp     CV_32F (||∇I||)
+         * @param [out] edgeDir     CV_32F (radian, [-pi, pi))
+         * @param [out] edgeCode    CV_8U  (0..3 or 0..7)
+         * @param [in] sigma
+         * @param [in] roi
+         * @param [in] quantizeDirections   4 or 8
+         */ 
         static void calcEdgeAmpDir(
-            const cv::Mat& srcGray,     // CV_8U or CV_16U
-            cv::Mat& edgeAmp,           // CV_32F (||∇I||)
-            cv::Mat& edgeDir,           // CV_32F (radian, [-pi, pi))
-            cv::Mat& edgeCode,          // CV_8U  (0..3 or 0..7)
-            double sigma,
+            const cv::Mat& srcGray, 
+            cv::Mat& edgeAmp,
+            cv::Mat& edgeDir, 
+            cv::Mat& edgeCode,
+            const double sigma,
             const cv::Rect& roi = {},
-            int quantizeDirections = 4   // 4 or 8
+            const int32_t quantizeDirections = 4
         );
 
     private:
