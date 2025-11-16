@@ -113,11 +113,18 @@ namespace ImageProc
             const cv::Rect& roi = {}
         );
 
-        // ガウス微分（y方向）
+        /**
+         * @brief ガウス微分（y方向）
+         *
+         * @param [in] srcGray CV_8U or CV_16U
+         * @param [out] gradY CV_32F, same size as src
+         * @param [in] sigma
+         * @param [in] roi  empty -> whole image
+         */
         static void calcVerticalDiffImage(
             const cv::Mat& srcGray,
             cv::Mat& gradY,             // CV_32F
-            double sigma,
+            const double sigma,
             const cv::Rect& roi = {}
         );
 

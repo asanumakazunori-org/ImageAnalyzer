@@ -233,7 +233,7 @@ void EdgeDetector::calcHorizontalDiffImage(
 void EdgeDetector::calcVerticalDiffImage(
     const cv::Mat& srcGray,
     cv::Mat& gradY,
-    double sigma,
+    const double sigma,
     const cv::Rect& roi)
 {
     CV_Assert(srcGray.channels() == 1);
