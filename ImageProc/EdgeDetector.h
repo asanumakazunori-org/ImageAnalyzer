@@ -98,12 +98,19 @@ namespace ImageProc
             const double maxDir = 0.0);
 
     private:
-        // ガウス微分（x方向）
+        /**
+         * @brief ガウス微分（x方向）
+         * 
+         * @param [in] srcGray CV_8U or CV_16U
+         * @param [out] gradY CV_32F, same size as src
+         * @param [in] sigma
+         * @param [in] roi  empty -> whole image
+         */ 
         static void calcHorizontalDiffImage(
-            const cv::Mat& srcGray,     // CV_8U or CV_16U
-            cv::Mat& gradX,             // CV_32F, same size as src
-            double sigma,
-            const cv::Rect& roi = {}    // empty -> whole image
+            const cv::Mat& srcGray,
+            cv::Mat& gradX,
+            const double sigma,
+            const cv::Rect& roi = {}
         );
 
         // ガウス微分（y方向）

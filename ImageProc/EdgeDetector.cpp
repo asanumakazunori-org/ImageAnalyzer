@@ -216,7 +216,7 @@ inline void applySep(const cv::Mat& src, cv::Mat& dst,
 void EdgeDetector::calcHorizontalDiffImage(
     const cv::Mat& srcGray,
     cv::Mat& gradX,
-    double sigma,
+    const double sigma,
     const cv::Rect& roi)
 {
     CV_Assert(srcGray.channels() == 1);
