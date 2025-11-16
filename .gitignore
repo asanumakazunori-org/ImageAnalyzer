@@ -1,0 +1,35 @@
+﻿# Build outputs
+/build/
+[Cc]MakeCache.txt
+[Cc]MakeFiles/
+*.vcxproj*
+*.sln
+
+# Visual Studio（ユーザー設定）
+.vs/
+*.user
+*.opendb
+*.sdf
+
+# CMake presets
+CMakeFiles/
+CMakeCache.txt
+
+# Logs
+*.log
+
+# vcpkg build artifacts
+vcpkg_installed/
+packages/
+installed/
+
+# Generated Qt build files
+*.moc
+*.qrc.dep
+*.tlog
+
+# Temporary files
+*.obj
+*.exe
+*.dll
+*.pdb
