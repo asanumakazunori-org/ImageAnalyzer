@@ -17,18 +17,30 @@ namespace ImageProc
     // ---- 1) エッジ点（Edgel / Edge vertex） ------------------------------------
     // 用語：position(=cv::Point2d), orientation[rad] ∈ [-π, π], magnitude(|∇I|)
     struct EdgeVertex {
-        cv::Point2d pos;     // subpixel OK
-        double      orientation; // radians [-pi, pi]
-        double      magnitude;   // gradient magnitude (|∇I|)
+        cv::Point2d pos;
+        double      orientation;
+        double      magnitude;
 
-        EdgeVertex() = default;
-        EdgeVertex(double x, double y, double theta, double mag)
-            : pos{ x, y }, orientation(theta), magnitude(mag) {
+        // 🔥 すべてのメンバをここで初期化する（VS の誤検出に最も強い書き方）
+        EdgeVertex() noexcept
+        {
+            pos.x = 0.0;
+            pos.y = 0.0;
+            orientation = 0.0;
+            magnitude = 0.0;
         }
-        EdgeVertex(const cv::Point2d& p, double theta, double mag)
-            : pos{ p }, orientation(theta), magnitude(mag) {
+
+        EdgeVertex(double x, double y, double theta, double mag) noexcept
+            : pos(x, y), orientation(theta), magnitude(mag)
+        {
+        }
+
+        EdgeVertex(const cv::Point2d& p, double theta, double mag) noexcept
+            : pos(p), orientation(theta), magnitude(mag)
+        {
         }
     };
+
 
     // ---- 2) エッジ線（Polyline）とその集合（Polylines） -------------------------
     using Polyline = std::vector<EdgeVertex>;
@@ -98,31 +110,55 @@ namespace ImageProc
             const double maxDir = 0.0);
 
     private:
-        // ガウス微分（x方向）
+        /**
+         * @brief ガウス微分（x方向）
+         * 
+         * @param [in] srcGray CV_8U or CV_16U
+         * @param [out] gradY CV_32F, same size as src
+         * @param [in] sigma
+         * @param [in] roi  empty -> whole image
+         */ 
         static void calcHorizontalDiffImage(
-            const cv::Mat& srcGray,     // CV_8U or CV_16U
-            cv::Mat& gradX,             // CV_32F, same size as src
-            double sigma,
-            const cv::Rect& roi = {}    // empty -> whole image
-        );
-
-        // ガウス微分（y方向）
-        static void calcVerticalDiffImage(
             const cv::Mat& srcGray,
-            cv::Mat& gradY,             // CV_32F
-            double sigma,
+            cv::Mat& gradX,
+            const double sigma,
             const cv::Rect& roi = {}
         );
 
-        // 勾配強度・方向・方位コード（4/8方向量子化）
+        /**
+         * @brief ガウス微分（y方向）
+         *
+         * @param [in] srcGray CV_8U or CV_16U
+         * @param [out] gradY CV_32F, same size as src
+         * @param [in] sigma
+         * @param [in] roi  empty -> whole image
+         */
+        static void calcVerticalDiffImage(
+            const cv::Mat& srcGray,
+            cv::Mat& gradY,             // CV_32F
+            const double sigma,
+            const cv::Rect& roi = {}
+        );
+
+        /**
+         * @brief 勾配強度・方向・方位コード（4 / 8方向量子化）
+         * 
+         * @param [in] srcGray      CV_8U or CV_16U
+         * @param [out] edgeAmp     CV_32F (||∇I||)
+         * @param [out] edgeDir     CV_32F (radian, [-pi, pi))
+         * @param [out] edgeCode    CV_8U  (0..3 or 0..7)
+         * @param [in] sigma
+         * @param [in] roi
+         * @param [in] quantizeDirections   4 or 8
+         */ 
         static void calcEdgeAmpDir(
-            const cv::Mat& srcGray,     // CV_8U or CV_16U
-            cv::Mat& edgeAmp,           // CV_32F (||∇I||)
-            cv::Mat& edgeDir,           // CV_32F (radian, [-pi, pi))
-            cv::Mat& edgeCode,          // CV_8U  (0..3 or 0..7)
-            double sigma,
+            const cv::Mat& srcGray, 
+            cv::Mat& edgeAmp,
+            cv::Mat& edgeDir, 
+            cv::Mat& edgeCode,
+            const double sigma,
             const cv::Rect& roi = {},
-            int quantizeDirections = 4   // 4 or 8
+            const int32_t quantizeDirections = 4
         );
 
     private:
