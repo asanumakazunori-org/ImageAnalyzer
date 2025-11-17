@@ -8,18 +8,53 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-test:
+  build-test-analysis:
     runs-on: self-hosted
 
     steps:
-    - name: Checkout
+    # 1) ソース取得
+    - name: Checkout repository
       uses: actions/checkout@v4
 
+    # 2) CMake 構成
     - name: Configure CMake
       run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
 
+    # 3) ビルド
     - name: Build
       run: cmake --build build --config Debug
 
-    - name: Run tests
+    # 4) 単体テスト
+    - name: Run GoogleTest
       run: build\Debug\ImageProcTests.exe
+
+    # 5) 静的解析 (Cppcheck)
+    - name: Run Cppcheck
+      continue-on-error: true   # 静的解析だけは失敗してもCIを止めない
+      run: >
+        cppcheck
+        --enable=all --inconclusive
+        --std=c++17 --language=c++
+        --platform=win64
+        --suppress=missingIncludeSystem
+        --output-file=cppcheck-report.txt
+        ImageProc ImageViewer
+
+    # 6) カバレッジ計測 (OpenCppCoverage)
+    - name: Run OpenCppCoverage
+      run: >
+        "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe"
+        --export_type=cobertura:coverage.xml
+        --sources "${{ github.workspace }}"
+        --excluded_sources "${{ github.workspace }}\build"
+        -- "${{ github.workspace }}\build\Debug\ImageProcTests.exe"
+
+    # 7) 成果物のアップロード（解析レポート＋カバレッジ）
+    - name: Upload Analysis Reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-ci-reports
+        path: |
+          cppcheck-report.txt
+          coverage.xml
+          build\Debug\ImageProcTests.exe
