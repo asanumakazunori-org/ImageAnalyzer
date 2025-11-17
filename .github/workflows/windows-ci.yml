@@ -16,20 +16,21 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure CMake
+        shell: cmd
         run: |
-          "C:/Program Files/Microsoft Visual Studio/2022/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe" -S . -B build -G "Visual Studio 17 2022" -A x64
+          "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -S . -B build -G "Visual Studio 17 2022" -A x64
 
       - name: Build
+        shell: cmd
         run: |
-          "C:/Program Files/Microsoft Visual Studio/2022/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe" --build build --config Debug
+          "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" --build build --config Debug
 
       - name: Run GoogleTest
         run: build/Debug/ImageProcTests.exe
 
       - name: Run Cppcheck
         continue-on-error: true
-        run: |
-          cppcheck --enable=all --inconclusive --std=c++17 --language=c++ --platform=win64 --suppress=missingIncludeSystem --output-file=cppcheck-report.txt ImageProc ImageViewer
+        run: cppcheck --enable=all --inconclusive --std=c++17 --language=c++ --platform=win64 --suppress=missingIncludeSystem --output-file=cppcheck-report.txt ImageProc ImageViewer
 
       - name: Run OpenCppCoverage
         run: |
