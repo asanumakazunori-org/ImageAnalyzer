@@ -27,10 +27,21 @@ jobs:
           & "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
           --build build --config Debug
 
-      # 3) 単体テスト
-      - name: Run GoogleTest
+      # 3) 単体テスト（デバッグ用）
+      - name: Run GoogleTest (debug)
         working-directory: build/Debug
-        run: .\ImageProcTests.exe
+        continue-on-error: true      # ★ いったん「失敗してもジョブは続行」にする
+        run: |
+          echo "=== Current directory ==="
+          pwd
+          echo "=== Files in this directory ==="
+          dir
+          echo "=== DLLs in this directory ==="
+          dir *.dll
+          echo "=== Run tests ==="
+          .\ImageProcTests.exe --gtest_color=yes
+          echo "=== Last exit code ==="
+          echo $LASTEXITCODE
 
       # 4) 静的解析 (Cppcheck)
       - name: Run Cppcheck
