@@ -152,3 +152,23 @@ add_custom_command(TARGET ImageViewer POST_BUILD
 
     COMMENT "Run windeployqt + copy OpenCV DLLs"
 )
+
+# ============================================================
+#  ImageProcTests へ Qt + OpenCV DLL をコピー
+# ============================================================
+add_custom_command(TARGET ImageProcTests POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E echo "Deploying Qt + OpenCV DLLs for tests..."
+
+    COMMAND "C:/Qt/6.10.0/msvc2022_64/bin/windeployqt.exe"
+        "$<TARGET_FILE:ImageProcTests>"
+        --no-translations
+        --compiler-runtime
+        $<$<CONFIG:Debug>:--debug>
+        $<$<CONFIG:Release>:--release>
+
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+        "C:/work/vcpkg/installed/x64-windows/bin"
+        "$<TARGET_FILE_DIR:ImageProcTests>"
+
+    COMMENT "Run windeployqt + copy OpenCV DLLs to test binary"
+)
