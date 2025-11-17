@@ -315,21 +315,36 @@ namespace ImageProc
 
 
         /*!
-        * @brief エッジピークを追尾する(反時計周り)
-        *
-        * ToDo 記載する
-        */
+         * @brief エッジピークを反時計回り(CCW)に追尾してポリゴンを生成する
+         *
+         * @param[in]  x
+         * @param[in]  y
+         * @param[in]  edgePeak
+         * @param[in]  edgeAmp
+         * @param[in]  edgeDir
+         * @param[in]  edgeCode
+         * @param[in]  stride_pix
+         * @param[out] polygon
+         */
         static void trackEdgePolygonCCW(
             const int32_t x, const int32_t y,
             uint8_t* const edgePeak,
             const double* const edgeAmp, const double* const edgeDir, const uint8_t* const edgeCode,
             const int32_t stride_pix,
             Polyline&  polygon);
+
         /*!
-        * @brief エッジラインを追尾する(時計周り)
-        *
-        * ToDo 記載する
-        */
+         * @brief エッジピークを時計回り(CW)に追尾してポリゴンを生成する
+         *
+         * @param[in]  x
+         * @param[in]  y
+         * @param[in]  edgePeak
+         * @param[in]  edgeAmp
+         * @param[in]  edgeDir
+         * @param[in]  edgeCode
+         * @param[in]  stride_pix
+         * @param[out] polygon
+         */
         static void trackEdgePolygonCW(
             const int32_t x, const int32_t y,
             uint8_t* const edgePeak,
@@ -338,10 +353,17 @@ namespace ImageProc
             Polyline& polygon);
 
         /*!
-        * @brief エッジラインを追尾する(時計周り)
-        *
-        * ToDo 記載する
-        */
+         * @brief エッジラインを時計回り(CW)に追尾して複数ポリゴンを生成する
+         *
+         * @param[in]  x
+         * @param[in]  y
+         * @param[in]  edgePeak
+         * @param[in]  edgeAmp
+         * @param[in]  edgeDir
+         * @param[in]  edgeCode
+         * @param[in]  stride_pix
+         * @param[out] edgePolygons
+         */
         static void trackEdgePolygon(
             const int32_t x, const int32_t y,
             uint8_t* const edgePeak,
