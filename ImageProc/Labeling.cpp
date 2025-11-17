@@ -4,7 +4,7 @@ namespace ImageProc
 {
     void Labeling::run(
         const cv::Mat& bgrImage,
-        int minArea,
+        const int32_t minArea,
         std::vector<LabelRegion>& outRegions)
     {
         outRegions.clear();

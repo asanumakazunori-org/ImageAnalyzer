@@ -16,12 +16,16 @@ namespace ImageProc
     class Labeling
     {
     public:
-        // bgrImage : 8bit 3ch BGR 画像
-        // minArea  : 最小面積（これより小さい領域は無視）
-        // outRegions: ラベリング結果（領域ごとのBBox等）
+        /**
+         * @brief ラベリングの実行
+         * 
+         * @param [in] bgrImage     8bit 3ch BGR 画像
+         * @param [in] minArea      最小面積（これより小さい領域は無視）
+         * @param [out] outRegions  ラベリング結果（領域ごとのBBox等）
+         */
         static void run(
             const cv::Mat& bgrImage,
-            int minArea,
+            const int32_t minArea,
             std::vector<LabelRegion>& outRegions
         );
     };
