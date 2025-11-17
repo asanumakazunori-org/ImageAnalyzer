@@ -29,8 +29,8 @@ jobs:
 
       # 3) 単体テスト
       - name: Run GoogleTest
-      working-directory: build/Debug
-      run: .\ImageProcTests.exe
+        working-directory: build/Debug
+        run: .\ImageProcTests.exe
 
       # 4) 静的解析 (Cppcheck)
       - name: Run Cppcheck
