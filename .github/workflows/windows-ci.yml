@@ -52,11 +52,12 @@ jobs:
           --export_type=cobertura:coverage.xml
           --export_type=html:coverage_html
           --sources "${{ github.workspace }}"
+          --excluded_sources "${{ github.workspace }}\build"
           -- "${{ github.workspace }}\build\RelWithDebInfo\ImageProcTests.exe"
 
       # 6) Summary タブ用の Markdown サマリ出力
       - name: Summarize coverage & cppcheck (Job Summary)
-        shell: pwsh
+        shell: powershell      # ★ ここを pwsh → powershell に変更
         continue-on-error: true
         run: |
           $summary = @()
