@@ -47,11 +47,13 @@ jobs:
       # 5) カバレッジ (OpenCppCoverage)
       - name: Run OpenCppCoverage
         run: >
-          & "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe"
+          & "C:/Program Files/OpenCppCoverage/OpenCppCoverage.exe"
           --export_type=cobertura:coverage.xml
-          --sources "${{ github.workspace }}"
+          --sources "${{ github.workspace }}\ImageProc"
+          --sources "${{ github.workspace }}\ImageViewer"
+          --sources "${{ github.workspace }}\Tests"
           --excluded_sources "${{ github.workspace }}\build"
-          -- "${{ github.workspace }}\build\Release\ImageProcTests.exe"
+          -- "${{ github.workspace }}\build/Debug/ImageProcTests.exe"
 
       # 6) レポートアップロード
       - name: Upload Analysis Reports
