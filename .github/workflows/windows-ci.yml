@@ -15,33 +15,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 1) CMake 構成
+      # 1) CMake 構成（マルチ構成なので Debug/Release 両方生成される）
       - name: Configure CMake
         run: >
           & "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
           -S . -B build -G "Visual Studio 17 2022" -A x64
 
-      # 2) ビルド
-      - name: Build
+      # 2) ビルド（Release 構成）
+      - name: Build (Release)
         run: >
           & "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
-          --build build --config Debug
+          --build build --config Release
 
-      # 3) 単体テスト（デバッグ用）
-      - name: Run GoogleTest (debug)
-        working-directory: build/Debug
-        continue-on-error: true      # ★ いったん「失敗してもジョブは続行」にする
-        run: |
-          echo "=== Current directory ==="
-          pwd
-          echo "=== Files in this directory ==="
-          dir
-          echo "=== DLLs in this directory ==="
-          dir *.dll
-          echo "=== Run tests ==="
-          .\ImageProcTests.exe --gtest_color=yes
-          echo "=== Last exit code ==="
-          echo $LASTEXITCODE
+      # 3) 単体テスト（Release バイナリを実行）
+      - name: Run GoogleTest
+        working-directory: build/Release
+        run: .\ImageProcTests.exe --gtest_color=yes
 
       # 4) 静的解析 (Cppcheck)
       - name: Run Cppcheck
@@ -55,14 +44,14 @@ jobs:
           --output-file=cppcheck-report.txt
           ImageProc ImageViewer
 
-      # 5) カバレッジ (OpenCppCoverage)
+      # 5) カバレッジ (OpenCppCoverage) - Release EXE を対象にする
       - name: Run OpenCppCoverage
         run: >
           & "C:/Program Files/OpenCppCoverage/OpenCppCoverage.exe"
           --export_type=cobertura:coverage.xml
           --sources "${{ github.workspace }}"
           --excluded_sources "${{ github.workspace }}/build"
-          -- "${{ github.workspace }}/build/Debug/ImageProcTests.exe"
+          -- "${{ github.workspace }}/build/Release/ImageProcTests.exe"
 
       # 6) レポートアップロード
       - name: Upload Analysis Reports
@@ -72,4 +61,4 @@ jobs:
           path: |
             cppcheck-report.txt
             coverage.xml
-            build/Debug/ImageProcTests.exe
+            build/Release/ImageProcTests.exe
