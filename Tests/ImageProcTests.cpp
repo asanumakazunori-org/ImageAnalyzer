@@ -1,4 +1,7 @@
-﻿#include <gtest/gtest.h>
+﻿#include <windows.h>
+#include <io.h>
+#include <fcntl.h>
+#include <gtest/gtest.h>
 
 #include <opencv2/opencv.hpp>
 
@@ -41,4 +44,12 @@ TEST(ImageProc_Labeling, RunOnSimpleImage)
     Labeling::run(img, /*minArea=*/50, regions);
 
     EXPECT_GE(static_cast<int>(regions.size()), 1);
+}
+
+int main(int argc, char** argv)
+{
+    SetConsoleOutputCP(CP_UTF8); // コンソールを UTF-8 化
+
+    testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }
