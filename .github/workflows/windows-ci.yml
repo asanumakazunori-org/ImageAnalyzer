@@ -21,16 +21,16 @@ jobs:
           & "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
           -S . -B build -G "Visual Studio 17 2022" -A x64
 
-      # 2) ビルド
-      - name: Build
+      # 2) ビルド（RelWithDebInfo）
+      - name: Build (RelWithDebInfo)
         run: >
           & "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
-          --build build --config Debug
+          --build build --config RelWithDebInfo
 
-      # 3) 単体テスト
+      # 3) 単体テスト（GoogleTest XML 出力付き） ★
       - name: Run GoogleTest
-      working-directory: build/Debug
-      run: .\ImageProcTests.exe
+        working-directory: build/RelWithDebInfo
+        run: .\ImageProcTests.exe --gtest_color=yes --gtest_output=xml:gtest-report.xml
 
       # 4) 静的解析 (Cppcheck)
       - name: Run Cppcheck
@@ -44,16 +44,234 @@ jobs:
           --output-file=cppcheck-report.txt
           ImageProc ImageViewer
 
-      # 5) カバレッジ (OpenCppCoverage)
+      # 5) カバレッジ (OpenCppCoverage) - XML + HTML
       - name: Run OpenCppCoverage
         run: >
-          & "C:/Program Files/OpenCppCoverage/OpenCppCoverage.exe"
+          & "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe"
           --export_type=cobertura:coverage.xml
+          --export_type=html:coverage_html
           --sources "${{ github.workspace }}"
-          --excluded_sources "${{ github.workspace }}/build"
-          -- "${{ github.workspace }}/build/Debug/ImageProcTests.exe"
+          -- "${{ github.workspace }}\build\RelWithDebInfo\ImageProcTests.exe"
 
-      # 6) レポートアップロード
+      # 6) Summary タブ用の Markdown サマリ
+      - name: Summarize tests, coverage & cppcheck (Job Summary)
+        shell: powershell
+        continue-on-error: true
+        run: |
+          $summary = @()
+
+          # ---------- GoogleTest summary ---------- ★
+          $gtestPath = "build/RelWithDebInfo/gtest-report.xml"
+          if (Test-Path $gtestPath) {
+            try {
+              [xml]$gxml = Get-Content $gtestPath
+              $root = $gxml.testsuites
+
+              $total    = [int]$root.tests
+              $failures = [int]$root.failures
+              $disabled = [int]$root.disabled
+              $skipped  = 0
+              if ($root.skipped) { $skipped = [int]$root.skipped }
+              $errors   = 0
+              if ($root.errors)  { $errors  = [int]$root.errors }
+
+              $passed = $total - $failures - $disabled - $skipped - $errors
+
+              $summary += "## GoogleTest"
+              $summary += ""
+              $summary += "| Metric  | Count |"
+              $summary += "|---------|------:|"
+              $summary += "| Total   | $total |"
+              $summary += "| Passed  | $passed |"
+              $summary += "| Failed  | $failures |"
+              $summary += "| Skipped | $skipped |"
+              $summary += "| Disabled | $disabled |"
+              if ($errors -gt 0) {
+                $summary += "| Errors | $errors |"
+              }
+
+              # 失敗したテスト一覧（あれば）
+              $failedCases = @()
+              foreach ($suite in $gxml.testsuites.testsuite) {
+                foreach ($case in $suite.testcase) {
+                  if ($case.failure -or $case.error) {
+                    $msg = ""
+                    if ($case.failure) { $msg = $case.failure.message }
+                    elseif ($case.error) { $msg = $case.error.message }
+                    $failedCases += [PSCustomObject]@{
+                      Suite   = $suite.name
+                      Name    = $case.name
+                      Message = $msg
+                    }
+                  }
+                }
+              }
+
+              if ($failedCases.Count -gt 0) {
+                $summary += ""
+                $summary += "### Failed tests"
+                $summary += ""
+                $summary += "| Suite | Test | Message |"
+                $summary += "|-------|------|---------|"
+                foreach ($f in $failedCases) {
+                  $msg = $f.Message.Replace("|", "\|")
+                  $summary += "| $($f.Suite) | $($f.Name) | $msg |"
+                }
+              }
+            }
+            catch {
+              $summary += ""
+              $summary += "GoogleTest summary generation failed: $($_.Exception.Message)"
+            }
+          }
+
+          # ---------- Coverage summary ----------
+          $coveragePath = "coverage.xml"
+          if (Test-Path $coveragePath) {
+            try {
+              [xml]$cov = Get-Content $coveragePath
+              $root = $cov.coverage
+
+              $totalLines = 0
+              $coveredLines = 0
+
+              # ルートに集計値があれば優先
+              if ($root.'lines-valid' -and [int]$root.'lines-valid' -gt 0) {
+                $totalLines = [int]$root.'lines-valid'
+                $coveredLines = [int]$root.'lines-covered'
+              }
+              else {
+                # 無ければ全クラスの line 要素から集計
+                $allLines = @()
+                if ($cov.coverage.packages.package) {
+                  foreach ($pkg in $cov.coverage.packages.package) {
+                    if ($pkg.classes.class) {
+                      foreach ($cls in $pkg.classes.class) {
+                        if ($cls.lines.line) {
+                          $allLines += $cls.lines.line
+                        }
+                      }
+                    }
+                  }
+                }
+                $totalLines = $allLines.Count
+                $coveredLines = ($allLines | Where-Object { [int]$_.hits -gt 0 }).Count
+              }
+
+              $lineRatePct = 0
+              if ($totalLines -gt 0) {
+                $lineRatePct = [math]::Round(100.0 * $coveredLines / $totalLines, 1)
+              }
+
+              $summary += ""
+              $summary += "## Code Coverage"
+              $summary += ""
+              $summary += "| Metric        | Value |"
+              $summary += "|--------------|------:|"
+              $summary += "| Lines covered | $coveredLines |"
+              $summary += "| Total lines   | $totalLines |"
+              $summary += "| Line rate     | $lineRatePct% |"
+              $summary += ""
+              $summary += "| File | Line % | Covered / Total |"
+              $summary += "|------|-------:|----------------:|"
+
+              # ファイル別
+              if ($cov.coverage.packages.package) {
+                foreach ($pkg in $cov.coverage.packages.package) {
+                  if (-not $pkg.classes.class) { continue }
+                  foreach ($cls in $pkg.classes.class) {
+                    $file = $cls.filename
+                    $lineNodes = $cls.lines.line
+                    $clsTotal = 0
+                    $clsCovered = 0
+                    $clsRate = 0
+
+                    if ($lineNodes) {
+                      $clsTotal   = $lineNodes.Count
+                      $clsCovered = ($lineNodes | Where-Object { [int]$_.hits -gt 0 }).Count
+                      if ($clsTotal -gt 0) {
+                        $clsRate = [math]::Round(100.0 * $clsCovered / $clsTotal, 1)
+                      }
+                    }
+                    elseif ($cls.'line-rate') {
+                      # 予備：line 要素が無ければ line-rate だけ使用
+                      $clsRate = [math]::Round(100.0 * [double]$cls.'line-rate', 1)
+                    }
+
+                    $summary += "| $file | $clsRate% | $clsCovered / $clsTotal |"
+                  }
+                }
+              }
+            }
+            catch {
+              $summary += ""
+              $summary += "Coverage summary generation failed: $($_.Exception.Message)"
+            }
+          }
+
+          # ---------- Cppcheck summary ----------
+          $cppPath = "cppcheck-report.txt"
+          if (Test-Path $cppPath) {
+            try {
+              $lines = Get-Content $cppPath
+
+              # 1) 個々の問題をパース
+              $issues = @()
+              foreach ($l in $lines) {
+                if ($l -match '^(?<file>[^:]+):(?<line>\d+):\d+:\s+(?<sev>\w+):\s+(?<msg>.+)$') {
+                  $issue = [PSCustomObject]@{
+                    File     = $matches.file
+                    Line     = [int]$matches.line
+                    Severity = $matches.sev.ToLower()
+                    Message  = $matches.msg.Trim()
+                  }
+                  $issues += $issue
+                }
+              }
+
+              # 2) Severity ごとの件数
+              $summary += ""
+              $summary += "## Cppcheck"
+              $summary += ""
+              $summary += "| Severity | Count |"
+              $summary += "|---------|------:|"
+
+              if ($issues.Count -gt 0) {
+                $groups = $issues | Group-Object Severity
+                foreach ($g in $groups | Sort-Object Name) {
+                  $summary += "| $($g.Name) | $($g.Count) |"
+                }
+              }
+              else {
+                $summary += "| (none) | 0 |"
+              }
+
+              # 3) 代表的な問題一覧（先頭 20 件）
+              if ($issues.Count -gt 0) {
+                $summary += ""
+                $summary += "### Cppcheck issues (first 20)"
+                $summary += ""
+                $summary += "| Severity | File | Line | Message |"
+                $summary += "|---------|------|-----:|---------|"
+
+                foreach ($issue in $issues | Select-Object -First 20) {
+                  $msg = $issue.Message.Replace('|', '\|')
+                  $summary += "| $($issue.Severity) | $($issue.File) | $($issue.Line) | $msg |"
+                }
+              }
+            }
+            catch {
+              $summary += ""
+              $summary += "Cppcheck summary generation failed: $($_.Exception.Message)"
+            }
+          }
+
+          if ($summary.Count -gt 0) {
+            $summaryText = $summary -join "`n"
+            $summaryText | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          }
+
+      # 7) レポートアップロード（テキスト + HTML）
       - name: Upload Analysis Reports
         uses: actions/upload-artifact@v4
         with:
@@ -61,4 +279,6 @@ jobs:
           path: |
             cppcheck-report.txt
             coverage.xml
-            build/Debug/ImageProcTests.exe
+            coverage_html/
+            build/RelWithDebInfo/ImageProcTests.exe
+            build/RelWithDebInfo/gtest-report.xml
