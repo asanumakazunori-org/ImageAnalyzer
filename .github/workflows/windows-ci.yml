@@ -21,7 +21,7 @@ jobs:
           & "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
           -S . -B build -G "Visual Studio 17 2022" -A x64
 
-      # 2) ビルド（Release）
+      # 2) ビルド（Release で統一）
       - name: Build (Release)
         run: >
           & "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
@@ -47,13 +47,13 @@ jobs:
       # 5) カバレッジ (OpenCppCoverage)
       - name: Run OpenCppCoverage
         run: >
-          & "C:/Program Files/OpenCppCoverage/OpenCppCoverage.exe"
+          & "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe"
           --export_type=cobertura:coverage.xml
           --sources "${{ github.workspace }}\ImageProc"
           --sources "${{ github.workspace }}\ImageViewer"
           --sources "${{ github.workspace }}\Tests"
           --excluded_sources "${{ github.workspace }}\build"
-          -- "${{ github.workspace }}\build/Debug/ImageProcTests.exe"
+          -- "${{ github.workspace }}\build\Release\ImageProcTests.exe"
 
       # 6) レポートアップロード
       - name: Upload Analysis Reports
