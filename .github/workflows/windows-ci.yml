@@ -282,3 +282,23 @@ jobs:
             coverage_html/
             build/RelWithDebInfo/ImageProcTests.exe
             build/RelWithDebInfo/gtest-report.xml
+
+      # 8) アプリ本体を ZIP にまとめて Artifact 化
+      - name: Package ImageViewer (RelWithDebInfo)
+        run: |
+          # 出力用フォルダを作成
+          New-Item -ItemType Directory -Force -Path dist
+
+          # 実行ファイルと必要な DLL（既に CMake / windeployqt で集めている想定）
+          Copy-Item -Recurse -Force build/RelWithDebInfo/* dist/
+
+          # ZIP に固める
+          $zipName = "ImageAnalyzer-${{ github.run_number }}-win64.zip"
+          if (Test-Path $zipName) { Remove-Item $zipName }
+          Compress-Archive -Path dist/* -DestinationPath $zipName
+
+      - name: Upload App Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-analyzer-app
+          path: ImageAnalyzer-${{ github.run_number }}-win64.zip
