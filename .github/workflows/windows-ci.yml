@@ -15,19 +15,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 1) CMake 構成（マルチ構成なので Debug/Release 両方生成される）
+      # 1) CMake 構成
       - name: Configure CMake
         run: >
           & "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
           -S . -B build -G "Visual Studio 17 2022" -A x64
 
-      # 2) ビルド（Release 構成）
+      # 2) ビルド（Release）
       - name: Build (Release)
         run: >
           & "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
           --build build --config Release
 
-      # 3) 単体テスト（Release バイナリを実行）
+      # 3) 単体テスト（Release のテスト実行ファイル）
       - name: Run GoogleTest
         working-directory: build/Release
         run: .\ImageProcTests.exe --gtest_color=yes
@@ -44,14 +44,14 @@ jobs:
           --output-file=cppcheck-report.txt
           ImageProc ImageViewer
 
-      # 5) カバレッジ (OpenCppCoverage) - Release EXE を対象にする
+      # 5) カバレッジ (OpenCppCoverage)
       - name: Run OpenCppCoverage
         run: >
-          & "C:/Program Files/OpenCppCoverage/OpenCppCoverage.exe"
+          & "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe"
           --export_type=cobertura:coverage.xml
           --sources "${{ github.workspace }}"
-          --excluded_sources "${{ github.workspace }}/build"
-          -- "${{ github.workspace }}/build/Release/ImageProcTests.exe"
+          --excluded_sources "${{ github.workspace }}\build"
+          -- "${{ github.workspace }}\build\Release\ImageProcTests.exe"
 
       # 6) レポートアップロード
       - name: Upload Analysis Reports
