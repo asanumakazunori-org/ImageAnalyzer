@@ -45,14 +45,102 @@ jobs:
           ImageProc ImageViewer
 
       # 5) カバレッジ (OpenCppCoverage)
+      #    - Cobertura XML + HTML レポートを両方出力
       - name: Run OpenCppCoverage
         run: >
           & "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe"
           --export_type=cobertura:coverage.xml
+          --export_type=html:coverage_html
           --sources "${{ github.workspace }}"
           -- "${{ github.workspace }}\build\RelWithDebInfo\ImageProcTests.exe"
 
-      # 6) レポートアップロード
+      # 6) Summary タブ用の Markdown サマリ出力
+      - name: Summarize coverage & cppcheck (Job Summary)
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $summary = @()
+
+          # --- Coverage summary ---
+          $coveragePath = "coverage.xml"
+          if (Test-Path $coveragePath) {
+            try {
+              $cov  = [xml](Get-Content $coveragePath)
+              $root = $cov.coverage
+
+              $totalLines   = 0
+              $coveredLines = 0
+              $lineRatePct  = 0
+
+              if ($root.'lines-valid')   { $totalLines   = [int]$root.'lines-valid' }
+              if ($root.'lines-covered') { $coveredLines = [int]$root.'lines-covered' }
+              if ($root.'line-rate')     { $lineRatePct  = [math]::Round(100 * [double]$root.'line-rate', 1) }
+
+              $summary += "## Code Coverage"
+              $summary += ""
+              $summary += "| Metric        | Value |"
+              $summary += "|--------------|------:|"
+              $summary += "| Lines covered | $coveredLines |"
+              $summary += "| Total lines   | $totalLines |"
+              $summary += "| Line rate     | $lineRatePct% |"
+              $summary += ""
+              $summary += "| File | Line % | Covered / Total |"
+              $summary += "|------|-------:|----------------:|"
+
+              if ($cov.coverage.packages.package) {
+                foreach ($pkg in $cov.coverage.packages.package) {
+                  if (-not $pkg.classes.class) { continue }
+                  foreach ($cls in $pkg.classes.class) {
+                    $file       = $cls.filename
+                    $clsTotal   = 0
+                    $clsCovered = 0
+                    $clsRatePct = 0
+
+                    if ($cls.'lines-valid')   { $clsTotal   = [int]$cls.'lines-valid' }
+                    if ($cls.'lines-covered') { $clsCovered = [int]$cls.'lines-covered' }
+                    if ($cls.'line-rate')     { $clsRatePct = [math]::Round(100 * [double]$cls.'line-rate', 1) }
+
+                    $summary += "| $file | $clsRatePct% | $clsCovered / $clsTotal |"
+                  }
+                }
+              }
+            }
+            catch {
+              $summary += ""
+              $summary += "Coverage summary generation failed: $($_.Exception.Message)"
+            }
+          }
+
+          # --- Cppcheck summary ---
+          $cppPath = "cppcheck-report.txt"
+          if (Test-Path $cppPath) {
+            try {
+              $lines      = Get-Content $cppPath
+              $errorCount = ($lines | Select-String " error:").Count
+              $warnCount  = ($lines | Select-String " warning:").Count
+              $infoCount  = ($lines | Select-String " information:").Count
+
+              $summary += ""
+              $summary += "## Cppcheck"
+              $summary += ""
+              $summary += "| Severity | Count |"
+              $summary += "|---------|------:|"
+              $summary += "| error   | $errorCount |"
+              $summary += "| warning | $warnCount |"
+              $summary += "| info    | $infoCount |"
+            }
+            catch {
+              $summary += ""
+              $summary += "Cppcheck summary generation failed: $($_.Exception.Message)"
+            }
+          }
+
+          if ($summary.Count -gt 0) {
+            $summaryText = $summary -join "`n"
+            $summaryText | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          }
+
+      # 7) レポートアップロード（テキスト + HTML レポート）
       - name: Upload Analysis Reports
         uses: actions/upload-artifact@v4
         with:
@@ -60,4 +148,5 @@ jobs:
           path: |
             cppcheck-report.txt
             coverage.xml
+            coverage_html/
             build/RelWithDebInfo/ImageProcTests.exe
