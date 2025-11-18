@@ -27,10 +27,10 @@ jobs:
           & "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
           --build build --config RelWithDebInfo
 
-      # 3) 単体テスト
+      # 3) 単体テスト（GoogleTest XML 出力付き） ★
       - name: Run GoogleTest
         working-directory: build/RelWithDebInfo
-        run: .\ImageProcTests.exe --gtest_color=yes
+        run: .\ImageProcTests.exe --gtest_color=yes --gtest_output=xml:gtest-report.xml
 
       # 4) 静的解析 (Cppcheck)
       - name: Run Cppcheck
@@ -54,11 +54,76 @@ jobs:
           -- "${{ github.workspace }}\build\RelWithDebInfo\ImageProcTests.exe"
 
       # 6) Summary タブ用の Markdown サマリ
-      - name: Summarize coverage & cppcheck (Job Summary)
+      - name: Summarize tests, coverage & cppcheck (Job Summary)
         shell: powershell
         continue-on-error: true
         run: |
           $summary = @()
+
+          # ---------- GoogleTest summary ---------- ★
+          $gtestPath = "build/RelWithDebInfo/gtest-report.xml"
+          if (Test-Path $gtestPath) {
+            try {
+              [xml]$gxml = Get-Content $gtestPath
+              $root = $gxml.testsuites
+
+              $total    = [int]$root.tests
+              $failures = [int]$root.failures
+              $disabled = [int]$root.disabled
+              $skipped  = 0
+              if ($root.skipped) { $skipped = [int]$root.skipped }
+              $errors   = 0
+              if ($root.errors)  { $errors  = [int]$root.errors }
+
+              $passed = $total - $failures - $disabled - $skipped - $errors
+
+              $summary += "## GoogleTest"
+              $summary += ""
+              $summary += "| Metric  | Count |"
+              $summary += "|---------|------:|"
+              $summary += "| Total   | $total |"
+              $summary += "| Passed  | $passed |"
+              $summary += "| Failed  | $failures |"
+              $summary += "| Skipped | $skipped |"
+              $summary += "| Disabled | $disabled |"
+              if ($errors -gt 0) {
+                $summary += "| Errors | $errors |"
+              }
+
+              # 失敗したテスト一覧（あれば）
+              $failedCases = @()
+              foreach ($suite in $gxml.testsuites.testsuite) {
+                foreach ($case in $suite.testcase) {
+                  if ($case.failure -or $case.error) {
+                    $msg = ""
+                    if ($case.failure) { $msg = $case.failure.message }
+                    elseif ($case.error) { $msg = $case.error.message }
+                    $failedCases += [PSCustomObject]@{
+                      Suite   = $suite.name
+                      Name    = $case.name
+                      Message = $msg
+                    }
+                  }
+                }
+              }
+
+              if ($failedCases.Count -gt 0) {
+                $summary += ""
+                $summary += "### Failed tests"
+                $summary += ""
+                $summary += "| Suite | Test | Message |"
+                $summary += "|-------|------|---------|"
+                foreach ($f in $failedCases) {
+                  $msg = $f.Message.Replace("|", "\|")
+                  $summary += "| $($f.Suite) | $($f.Name) | $msg |"
+                }
+              }
+            }
+            catch {
+              $summary += ""
+              $summary += "GoogleTest summary generation failed: $($_.Exception.Message)"
+            }
+          }
 
           # ---------- Coverage summary ----------
           $coveragePath = "coverage.xml"
@@ -98,6 +163,7 @@ jobs:
                 $lineRatePct = [math]::Round(100.0 * $coveredLines / $totalLines, 1)
               }
 
+              $summary += ""
               $summary += "## Code Coverage"
               $summary += ""
               $summary += "| Metric        | Value |"
@@ -215,3 +281,4 @@ jobs:
             coverage.xml
             coverage_html/
             build/RelWithDebInfo/ImageProcTests.exe
+            build/RelWithDebInfo/gtest-report.xml
