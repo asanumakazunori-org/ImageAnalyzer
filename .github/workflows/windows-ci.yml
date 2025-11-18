@@ -21,15 +21,15 @@ jobs:
           & "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
           -S . -B build -G "Visual Studio 17 2022" -A x64
 
-      # 2) ビルド（Release で統一）
-      - name: Build (Release)
+      # 2) ビルド（RelWithDebInfo）
+      - name: Build (RelWithDebInfo)
         run: >
           & "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
-          --build build --config Release
+          --build build --config RelWithDebInfo
 
-      # 3) 単体テスト（Release のテスト実行ファイル）
+      # 3) 単体テスト（RelWithDebInfo の exe を実行）
       - name: Run GoogleTest
-        working-directory: build/Release
+        working-directory: build/RelWithDebInfo
         run: .\ImageProcTests.exe --gtest_color=yes
 
       # 4) 静的解析 (Cppcheck)
@@ -49,11 +49,8 @@ jobs:
         run: >
           & "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe"
           --export_type=cobertura:coverage.xml
-          --sources "${{ github.workspace }}\ImageProc"
-          --sources "${{ github.workspace }}\ImageViewer"
-          --sources "${{ github.workspace }}\Tests"
-          --excluded_sources "${{ github.workspace }}\build"
-          -- "${{ github.workspace }}\build\Release\ImageProcTests.exe"
+          --sources "${{ github.workspace }}"
+          -- "${{ github.workspace }}\build\RelWithDebInfo\ImageProcTests.exe"
 
       # 6) レポートアップロード
       - name: Upload Analysis Reports
@@ -63,4 +60,4 @@ jobs:
           path: |
             cppcheck-report.txt
             coverage.xml
-            build/Release/ImageProcTests.exe
+            build/RelWithDebInfo/ImageProcTests.exe
