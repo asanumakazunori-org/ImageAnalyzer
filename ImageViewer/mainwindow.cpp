@@ -1,4 +1,4 @@
-﻿// mainwindow.cpp
+// mainwindow.cpp
 #include "mainwindow.h"
 
 #include <QAction>

@@ -1,4 +1,4 @@
-﻿#include "Labeling.h"
+#include "Labeling.h"
 
 namespace ImageProc
 {

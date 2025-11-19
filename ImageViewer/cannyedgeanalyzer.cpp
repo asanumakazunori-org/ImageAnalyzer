@@ -1,4 +1,4 @@
-﻿// cannyedgeanalyzer.cpp
+// cannyedgeanalyzer.cpp
 #include "cannyedgeanalyzer.h"
 
 #include <cmath>                // std::cos, std::sin, std::sqrt

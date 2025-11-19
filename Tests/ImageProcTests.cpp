@@ -1,4 +1,4 @@
-﻿#include <windows.h>
+#include <windows.h>
 #include <io.h>
 #include <fcntl.h>
 #include <gtest/gtest.h>
@@ -48,8 +48,6 @@ TEST(ImageProc_Labeling, RunOnSimpleImage)
 
 int main(int argc, char** argv)
 {
-    SetConsoleOutputCP(CP_UTF8); // コンソールを UTF-8 化
-
-    testing::InitGoogleTest(&argc, argv);
+    ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

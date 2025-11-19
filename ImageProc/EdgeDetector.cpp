@@ -1,4 +1,4 @@
-﻿#include "EdgeDetector.h"
+#include "EdgeDetector.h"
 #include <cassert>
 #include <queue>
 

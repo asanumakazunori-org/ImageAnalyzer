@@ -1,4 +1,4 @@
-﻿// propertypanel.h
+// propertypanel.h
 #pragma once
 
 #include <QWidget>

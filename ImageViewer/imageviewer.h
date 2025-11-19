@@ -1,4 +1,4 @@
-﻿// imageviewer.h
+// imageviewer.h
 #pragma once
 
 #include <QWidget>

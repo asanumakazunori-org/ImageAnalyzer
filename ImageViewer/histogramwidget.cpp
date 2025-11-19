@@ -1,4 +1,4 @@
-﻿// histogramwidget.cpp
+// histogramwidget.cpp
 #include "histogramwidget.h"
 
 #include <QPainter>
