@@ -1,4 +1,4 @@
-﻿// iaimageanalyzer.h
+// iaimageanalyzer.h
 #pragma once
 
 #include <QObject>

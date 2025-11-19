@@ -1,4 +1,4 @@
-﻿// cannyedgeanalyzer.h
+// cannyedgeanalyzer.h
 #pragma once
 
 #include <QObject>

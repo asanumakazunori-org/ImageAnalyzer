@@ -1,4 +1,4 @@
-﻿// labelinganalyzer.cpp
+// labelinganalyzer.cpp
 #include "labelinganalyzer.h"
 
 #include <opencv2/imgproc.hpp>

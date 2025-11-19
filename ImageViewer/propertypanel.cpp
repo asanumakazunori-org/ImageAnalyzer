@@ -1,4 +1,4 @@
-﻿// propertypanel.cpp
+// propertypanel.cpp
 #include "propertypanel.h"
 
 #include <QFormLayout>

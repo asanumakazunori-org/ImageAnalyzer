@@ -1,4 +1,4 @@
-﻿// imageviewer.cpp
+// imageviewer.cpp
 #include "imageviewer.h"
 
 #include <QPainter>

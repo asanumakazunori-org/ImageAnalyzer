@@ -1,4 +1,4 @@
-﻿// labelinganalyzer.h
+// labelinganalyzer.h
 #pragma once
 
 #include <QObject>

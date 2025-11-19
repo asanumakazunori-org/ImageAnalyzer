@@ -1,4 +1,4 @@
-﻿// histogramwidget.h
+// histogramwidget.h
 #pragma once
 
 #include <QWidget>

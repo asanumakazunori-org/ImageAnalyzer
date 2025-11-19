@@ -1,4 +1,4 @@
-﻿// mainwindow.h
+// mainwindow.h
 #pragma once
 
 #include <QMainWindow>
