@@ -27,6 +27,24 @@ jobs:
           & "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
           --build build --config RelWithDebInfo
 
+      # 2.5) Copy required DLLs for ImageProcTests
+      - name: Copy runtime DLLs (Qt / OpenCV) for tests
+        run: |
+          $dst = "build/RelWithDebInfo"
+
+          # --- Qt DLLs ---
+          Copy-Item "C:/Qt/6.10.0/msvc2022_64/bin/*.dll" $dst -Force
+          if (!(Test-Path "$dst/platforms")) { New-Item -ItemType Directory "$dst/platforms" }
+          Copy-Item "C:/Qt/6.10.0/msvc2022_64/plugins/platforms/*.dll" "$dst/platforms" -Force
+
+          # --- OpenCV DLLs ---
+          Copy-Item "C:/work/vcpkg/installed/x64-windows/bin/*.dll" $dst -Force
+
+          # --- TIFF/Image libs (vcpkg) ---
+          Copy-Item "C:/work/vcpkg/installed/x64-windows/bin/*.dll" $dst -Force
+
+          Write-Host "DLL copy completed."
+
       # 3) 単体テスト（GoogleTest XML 出力付き） ★
       - name: Run GoogleTest
         working-directory: build/RelWithDebInfo
