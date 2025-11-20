@@ -1,42 +1,29 @@
 {
-  "__comment": "このファイルは CMake と Visual Studio のビルド設定プリセットです。",
   "version": 3,
 
   "configurePresets": [
     {
-      "__comment_purpose": "Debug 構成（デバッグ用の設定）",
       "name": "debug",
       "displayName": "Debug",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/debug",
 
       "cacheVariables": {
-        "__comment_build_type": "Debug ビルド（最適化なし、デバッグ情報あり）",
         "CMAKE_BUILD_TYPE": "Debug",
-
-        "__comment_toolchain": "vcpkg のツールチェインファイル設定",
         "CMAKE_TOOLCHAIN_FILE": "C:/work/vcpkg/scripts/buildsystems/vcpkg.cmake",
-
-        "__comment_prefix": "Qt および vcpkg の検索パス",
         "CMAKE_PREFIX_PATH": "C:/Qt/6.10.0/msvc2022_64;C:/work/vcpkg/installed/x64-windows"
       }
     },
 
     {
-      "__comment_purpose": "Release 構成（最適化あり、配布用）",
       "name": "release",
       "displayName": "Release",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/release",
 
       "cacheVariables": {
-        "__comment_build_type": "Release ビルド（最適化ON）",
         "CMAKE_BUILD_TYPE": "Release",
-
-        "__comment_toolchain": "vcpkg のツールチェインファイル設定",
         "CMAKE_TOOLCHAIN_FILE": "C:/work/vcpkg/scripts/buildsystems/vcpkg.cmake",
-
-        "__comment_prefix": "Qt および vcpkg の検索パス",
         "CMAKE_PREFIX_PATH": "C:/Qt/6.10.0/msvc2022_64;C:/work/vcpkg/installed/x64-windows"
       }
     }
@@ -44,13 +31,11 @@
 
   "buildPresets": [
     {
-      "__comment": "Debug ビルド実行設定",
       "name": "debug-build",
       "configurePreset": "debug",
       "configuration": "Debug"
     },
     {
-      "__comment": "Release ビルド実行設定",
       "name": "release-build",
       "configurePreset": "release",
       "configuration": "Release"
