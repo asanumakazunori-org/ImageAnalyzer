@@ -15,88 +15,54 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      ############################################################
-      # 1) CMake Configure: Visual Studio 2026 (MSVC v144)
-      ############################################################
+      # 1) CMake configure (Visual Studio 2026)
       - name: Configure CMake (VS2026)
         run: >
-          & "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
-          -S . -B build -G "Visual Studio 18 2026" -A x64
-          -DCMAKE_TOOLCHAIN_FILE=C:/work/vcpkg/scripts/buildsystems/vcpkg.cmake
+          & "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -S . -B build -G "Visual Studio 18 2026" -A x64 -DCMAKE_TOOLCHAIN_FILE=C:/work/vcpkg/scripts/buildsystems/vcpkg.cmake
 
-      ############################################################
       # 2) Build
-      ############################################################
       - name: Build (RelWithDebInfo)
         run: >
-          & "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
-          --build build --config RelWithDebInfo
+          & "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" --build build --config RelWithDebInfo
 
-      ############################################################
-      # 3) Deploy DLLs using windeployqt (Qt 6.10 + msvc2022_64)
-      ############################################################
-      # ※ Qt が Visual Studio 2026 用バイナリをまだ提供していないため、
-      #    現時点では msvc2022_64 のままで OK。
-      ############################################################
+      # 2.5) Deploy DLLs to ImageViewer using windeployqt
       - name: Deploy Qt + OpenCV DLLs (windeployqt)
         shell: powershell
         run: |
-          $viewer = "build/RelWithDebInfo/StereoCameraViewer.exe"
+          $viewer = "build/RelWithDebInfo/ImageViewer.exe"
           if (!(Test-Path $viewer)) {
-            Write-Error "StereoCameraViewer.exe not found."
+            Write-Error "ImageViewer.exe not found."
             exit 1
           }
 
           Write-Host "Running windeployqt..."
-          & "C:/Qt/6.10.0/msvc2022_64/bin/windeployqt.exe" `
-            $viewer `
-            --no-translations `
-            --compiler-runtime `
-            --release
+          & "C:/Qt/6.10.0/msvc2022_64/bin/windeployqt.exe" $viewer --no-translations --compiler-runtime --release
           Write-Host "windeployqt completed."
 
-      ############################################################
-      # 4) Run GoogleTests
-      ############################################################
+      # 3) Run GoogleTests
       - name: Run GoogleTest
         working-directory: build/RelWithDebInfo
-        run: .\StereoCameraTests.exe --gtest_color=yes --gtest_output=xml:gtest-report.xml
+        run: .\ImageProcTests.exe --gtest_color=yes --gtest_output=xml:gtest-report.xml
 
-      ############################################################
-      # 5) Cppcheck
-      ############################################################
+      # 4) Cppcheck analysis
       - name: Run Cppcheck
         continue-on-error: true
         run: >
-          cppcheck
-          --enable=all --inconclusive
-          --std=c++17 --language=c++
-          --platform=win64
-          --suppress=missingIncludeSystem
-          --output-file=cppcheck-report.txt
-          StereoCameraAnalyzer StereoCameraProc
+          cppcheck --enable=all --inconclusive --std=c++17 --language=c++ --platform=win64 --suppress=missingIncludeSystem --output-file=cppcheck-report.txt ImageProc ImageViewer
 
-      ############################################################
-      # 6) OpenCppCoverage
-      ############################################################
+      # 5) Code coverage
       - name: Run OpenCppCoverage
         run: >
-          & "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe"
-          --export_type=cobertura:coverage.xml
-          --export_type=html:coverage_html
-          --sources "${{ github.workspace }}"
-          -- "${{ github.workspace }}\build\RelWithDebInfo\StereoCameraTests.exe"
+          & "C:\Program Files\OpenCppCoverage\OpenCppCoverage.exe" --export_type=cobertura:coverage.xml --export_type=html:coverage_html --sources "${{ github.workspace }}" -- "${{ github.workspace }}\build\RelWithDebInfo\ImageProcTests.exe"
 
-      ############################################################
-      # 7) Summary (GoogleTest + Coverage + Cppcheck)
-      ############################################################
-      - name: Summarize results
+      # 6) Summary (tests, coverage, cppcheck)
+      - name: Summarize test & coverage results
         shell: powershell
         continue-on-error: true
         run: |
           $summary = @()
 
-          # -------- GoogleTest Summary --------
+          # --- GoogleTest Summary ---
           $gtestPath = "build/RelWithDebInfo/gtest-report.xml"
           if (Test-Path $gtestPath) {
             try {
@@ -123,27 +89,24 @@ jobs:
               if ($errors -gt 0) {
                 $summary += "| Errors | $errors |"
               }
-
             } catch {
-              $summary += "GoogleTest summary error: $($_.Exception.Message)"
+              $summary += "GoogleTest summary generation error: $($_.Exception.Message)"
             }
           }
 
-          # -------- Code Coverage Summary --------
+          # --- Coverage Summary ---
           $coveragePath = "coverage.xml"
           if (Test-Path $coveragePath) {
             try {
               [xml]$cov = Get-Content $coveragePath
-              $counterNodes = $cov.coverage.packages.package.classes.class.lines.line
+              $lines = $cov.coverage.packages.package.classes.class.lines.line
 
               $totalLines = 0
               $coveredLines = 0
 
-              foreach ($line in $counterNodes) {
+              foreach ($line in $lines) {
                 $totalLines++
-                if ($line.hits -gt 0) {
-                  $coveredLines++
-                }
+                if ($line.hits -gt 0) { $coveredLines++ }
               }
 
               $pct = 0
@@ -158,13 +121,12 @@ jobs:
               $summary += "| Covered lines | $coveredLines |"
               $summary += "| Total lines   | $totalLines |"
               $summary += "| Coverage %    | $pct% |"
-
             } catch {
-              $summary += "Coverage summary error: $($_.Exception.Message)"
+              $summary += "Coverage summary generation error: $($_.Exception.Message)"
             }
           }
 
-          # -------- Cppcheck Summary --------
+          # --- Cppcheck Summary ---
           if (Test-Path "cppcheck-report.txt") {
             $summary += ""
             $summary += "## Cppcheck"
@@ -190,9 +152,7 @@ jobs:
             ($summary -join "`n") | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
           }
 
-      ############################################################
-      # 8) Upload artifacts
-      ############################################################
+      # 7) Upload reports
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -202,5 +162,5 @@ jobs:
             coverage.xml
             coverage_html/
             build/RelWithDebInfo/gtest-report.xml
-            build/RelWithDebInfo/StereoCameraTests.exe
-            build/RelWithDebInfo/StereoCameraViewer.exe
+            build/RelWithDebInfo/ImageProcTests.exe
+            build/RelWithDebInfo/ImageViewer.exe
