@@ -9,7 +9,10 @@ on:
 
 jobs:
   build-test-analysis:
-    runs-on: self-hosted
+    runs-on:
+      - self-hosted
+      - windows
+      - x64
 
     steps:
       # ------------------------------
@@ -50,6 +53,7 @@ jobs:
           mkdir artifact
           copy build/release/ImageViewer.exe artifact/
           copy build/release/*.dll artifact/ 2>$null || true
+          mkdir artifact/platforms 2>$null || true
           copy build/release/platforms/*.dll artifact/platforms/ 2>$null || true
 
       - name: Upload Artifacts
