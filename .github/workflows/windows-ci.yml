@@ -15,47 +15,68 @@ jobs:
       - x64
 
     steps:
-      # ------------------------------
-      # 1) リポジトリ取得
-      # ------------------------------
+      # --------------------------------------------------
+      # 1) ソース取得
+      # --------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ------------------------------
-      # 2) CMake configure（vcpkg toolchain 使用）
-      # ------------------------------
-      - name: Configure CMake (Release)
+      # --------------------------------------------------
+      # 2) MSVC の環境セット（最重要）
+      #    これを行わないと cl.exe が見つからず CMake が失敗する
+      # --------------------------------------------------
+      - name: Setup MSVC Developer Command Prompt
+        shell: cmd
+        run: |
+          "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+
+      # --------------------------------------------------
+      # 3) CMake Configure（CMakePresets.json を使用）
+      # --------------------------------------------------
+      - name: Configure (Release)
+        shell: powershell
         run: >
           & "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
           --preset release
 
-      # ------------------------------
-      # 3) ビルド（Release）
-      # ------------------------------
+      # --------------------------------------------------
+      # 4) Build（Release）
+      # --------------------------------------------------
       - name: Build (Release)
+        shell: powershell
         run: >
           & "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
           --build build/release --config Release
 
-      # ------------------------------
-      # 4) テスト実行
-      # ------------------------------
+      # --------------------------------------------------
+      # 5) Test（ctest）
+      # --------------------------------------------------
       - name: Run Tests
+        shell: powershell
         run: >
           & "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\ctest.exe"
           --test-dir build/release -C Release --output-on-failure
 
-      # ------------------------------
-      # 5) アーティファクト生成（exe + DLL）
-      # ------------------------------
+      # --------------------------------------------------
+      # 6) Package artifacts
+      # --------------------------------------------------
       - name: Package artifacts
+        shell: powershell
         run: |
           mkdir artifact
-          copy build/release/ImageViewer.exe artifact/
-          copy build/release/*.dll artifact/ 2>$null || true
-          mkdir artifact/platforms 2>$null || true
-          copy build/release/platforms/*.dll artifact/platforms/ 2>$null || true
+          # EXE
+          copy build/release/ImageViewer.exe artifact/ 2>$null
 
+          # DLL（Qt / vcpkg / OpenCV 等）
+          copy build/release/*.dll artifact/ 2>$null
+
+          # Qt platforms（存在しない場合はスキップ）
+          mkdir artifact/platforms 2>$null
+          copy build/release/platforms/*.dll artifact/platforms/ 2>$null
+
+      # --------------------------------------------------
+      # 7) Upload artifacts
+      # --------------------------------------------------
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
