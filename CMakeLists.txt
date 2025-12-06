@@ -2,44 +2,38 @@ cmake_minimum_required(VERSION 3.21)
 
 project(ImageAnalyzer LANGUAGES CXX)
 
-#----------------------------------------
-# Common settings
-#----------------------------------------
+# ------------------------------------------------------------------
+# 基本設定
+# ------------------------------------------------------------------
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Qt and vcpkg
-set(CMAKE_PREFIX_PATH
-    "C:/Qt/6.10.0/msvc2022_64"
-    "C:/work/vcpkg/installed/x64-windows"
-)
-
-# Qt automatic handling
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-#----------------------------------------
-# Dependencies
-#----------------------------------------
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+# ------------------------------------------------------------------
+# vcpkg から依存ライブラリを取得
+# ------------------------------------------------------------------
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 find_package(OpenCV REQUIRED)
-enable_testing()
 find_package(GTest CONFIG REQUIRED)
 
-#----------------------------------------
-# Compiler options
-#----------------------------------------
+enable_testing()
+
+# ------------------------------------------------------------------
+# MSVC の共通コンパイルオプション
+# ------------------------------------------------------------------
 if(MSVC)
-    add_compile_options(/utf-8)
+    add_compile_options(/utf-8 /W4)
     add_definitions(-D_USE_MATH_DEFINES)
 endif()
 
 add_definitions(-DUNICODE -D_UNICODE)
 
-#----------------------------------------
-# OpenCV no-analyze wrapper
-#----------------------------------------
+# ------------------------------------------------------------------
+# OpenCV_noanalyze ラッパー（アナライザ無効化）
+# ------------------------------------------------------------------
 add_library(OpenCV_noanalyze INTERFACE)
 target_include_directories(OpenCV_noanalyze INTERFACE ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(OpenCV_noanalyze INTERFACE ${OpenCV_LIBS})
@@ -48,9 +42,9 @@ if(MSVC)
     target_compile_options(OpenCV_noanalyze INTERFACE /analyze-)
 endif()
 
-#----------------------------------------
-# ImageProc
-#----------------------------------------
+# ------------------------------------------------------------------
+# ImageProc ライブラリ
+# ------------------------------------------------------------------
 file(GLOB IMAGEPROC_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/ImageProc/*.cpp
 )
@@ -71,9 +65,9 @@ target_link_libraries(ImageProc PUBLIC
     OpenCV_noanalyze
 )
 
-#----------------------------------------
-# ImageViewer (Qt GUI)
-#----------------------------------------
+# ------------------------------------------------------------------
+# ImageViewer（Qt GUI）
+# ------------------------------------------------------------------
 file(GLOB IMAGEVIEWER_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/ImageViewer/*.cpp
 )
@@ -87,75 +81,51 @@ add_executable(ImageViewer
 )
 
 target_link_libraries(ImageViewer PRIVATE
-    Qt6::Widgets
     ImageProc
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
 )
 
-#----------------------------------------
-# DLL directories
-#----------------------------------------
-set(QT_ROOT "C:/Qt/6.10.0/msvc2022_64")
-set(QT_BIN_DIR "${QT_ROOT}/bin")
-set(QT_PLATFORMS_DIR "${QT_ROOT}/plugins/platforms")
+# ------------------------------------------------------------------
+# DLL コピー（vcpkg 依存 DLL だけを自動コピー）
+# 環境変数・固定パスなし。完全自動化。
+# ------------------------------------------------------------------
+if(WIN32)
+    # Qt + OpenCV など vcpkg の DLL をすべてコピー
+    add_custom_command(TARGET ImageViewer POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E echo "Copy runtime DLLs for ImageViewer..."
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:ImageViewer> $<TARGET_FILE_DIR:ImageViewer>
+        COMMAND_EXPAND_LISTS
+    )
 
-set(OPENCV_BIN_DIR_DEBUG   "C:/work/vcpkg/installed/x64-windows/debug/bin")
-set(OPENCV_BIN_DIR_RELEASE "C:/work/vcpkg/installed/x64-windows/bin")
+    # Qt platform plugin のコピー
+    # vcpkg-installed ディレクトリから platforms/ をそのままコピー
+    if (VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
+        set(QT_PLATFORMS_DIR
+            "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/Qt6/plugins/platforms"
+        )
 
-#----------------------------------------
-# Safe DLL select (no generator expressions!)
-#----------------------------------------
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(QT_CORE_DLL      "${QT_BIN_DIR}/Qt6Cored.dll")
-    set(QT_GUI_DLL       "${QT_BIN_DIR}/Qt6Guid.dll")
-    set(QT_WIDGETS_DLL   "${QT_BIN_DIR}/Qt6Widgetsd.dll")
-    set(QT_PLATFORM_DLL  "${QT_PLATFORMS_DIR}/qwindowsd.dll")
-
-    set(OPENCV_CORE_DLL       "${OPENCV_BIN_DIR_DEBUG}/opencv_core4d.dll")
-    set(OPENCV_IMGPROC_DLL    "${OPENCV_BIN_DIR_DEBUG}/opencv_imgproc4d.dll")
-    set(OPENCV_IMGCODECS_DLL  "${OPENCV_BIN_DIR_DEBUG}/opencv_imgcodecs4d.dll")
-else()
-    set(QT_CORE_DLL      "${QT_BIN_DIR}/Qt6Core.dll")
-    set(QT_GUI_DLL       "${QT_BIN_DIR}/Qt6Gui.dll")
-    set(QT_WIDGETS_DLL   "${QT_BIN_DIR}/Qt6Widgets.dll")
-    set(QT_PLATFORM_DLL  "${QT_PLATFORMS_DIR}/qwindows.dll")
-
-    set(OPENCV_CORE_DLL       "${OPENCV_BIN_DIR_RELEASE}/opencv_core4.dll")
-    set(OPENCV_IMGPROC_DLL    "${OPENCV_BIN_DIR_RELEASE}/opencv_imgproc4.dll")
-    set(OPENCV_IMGCODECS_DLL  "${OPENCV_BIN_DIR_RELEASE}/opencv_imgcodecs4.dll")
+        add_custom_command(TARGET ImageViewer POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E echo "Copy Qt platform plugins..."
+            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:ImageViewer>/platforms"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${QT_PLATFORMS_DIR}"
+                "$<TARGET_FILE_DIR:ImageViewer>/platforms"
+        )
+    endif()
 endif()
 
-#----------------------------------------
-# Copy DLLs (safe for Ninja)
-#----------------------------------------
-add_custom_command(TARGET ImageViewer POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${QT_CORE_DLL}"      "$<TARGET_FILE_DIR:ImageViewer>"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${QT_GUI_DLL}"       "$<TARGET_FILE_DIR:ImageViewer>"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${QT_WIDGETS_DLL}"   "$<TARGET_FILE_DIR:ImageViewer>"
-)
-
-add_custom_command(TARGET ImageViewer POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:ImageViewer>/platforms"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${QT_PLATFORM_DLL}"
-                              "$<TARGET_FILE_DIR:ImageViewer>/platforms"
-)
-
-# OpenCV
-add_custom_command(TARGET ImageViewer POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${OPENCV_CORE_DLL}"      "$<TARGET_FILE_DIR:ImageViewer>"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${OPENCV_IMGPROC_DLL}"   "$<TARGET_FILE_DIR:ImageViewer>"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${OPENCV_IMGCODECS_DLL}" "$<TARGET_FILE_DIR:ImageViewer>"
-)
-
-#----------------------------------------
-# ImageProcTests (GTest)
-#----------------------------------------
-file(GLOB IMAGEPROC_TEST_SOURCES CONFIGURE_DEPENDS
+# ------------------------------------------------------------------
+# 単体テスト (GTest)
+# ------------------------------------------------------------------
+file(GLOB TEST_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/Tests/*.cpp
 )
 
-if(IMAGEPROC_TEST_SOURCES)
+if(TEST_SOURCES)
     add_executable(ImageProcTests
-        ${IMAGEPROC_TEST_SOURCES}
+        ${TEST_SOURCES}
     )
 
     target_link_libraries(ImageProcTests PRIVATE
@@ -165,9 +135,12 @@ if(IMAGEPROC_TEST_SOURCES)
 
     add_test(NAME ImageProcTests COMMAND ImageProcTests)
 
-    add_custom_command(TARGET ImageProcTests POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${OPENCV_CORE_DLL}"      "$<TARGET_FILE_DIR:ImageProcTests>"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${OPENCV_IMGPROC_DLL}"   "$<TARGET_FILE_DIR:ImageProcTests>"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${OPENCV_IMGCODECS_DLL}" "$<TARGET_FILE_DIR:ImageProcTests>"
-    )
+    # GTest 用 DLL コピー
+    if(WIN32)
+        add_custom_command(TARGET ImageProcTests POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E echo "Copy runtime DLLs for ImageProcTests..."
+            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:ImageProcTests> $<TARGET_FILE_DIR:ImageProcTests>
+            COMMAND_EXPAND_LISTS
+        )
+    endif()
 endif()
