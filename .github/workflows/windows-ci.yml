@@ -20,14 +20,14 @@ jobs:
 
     steps:
       # --------------------------------------------------
-      # 1) Checkout
+      # 1) ソース取得
       # --------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
       # --------------------------------------------------
-      # 2) MSVC 環境セット + CMake Configure
-      #    ※ vcvars64.bat と cmake を 1 つの cmd ステップで実行
+      # 2) CMake Configure（preset=release）
+      #    ※ vcvars64.bat + cmake を同じステップ内で実行
       # --------------------------------------------------
       - name: Configure CMake (Release)
         run: |
@@ -35,8 +35,7 @@ jobs:
           "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" --preset release
 
       # --------------------------------------------------
-      # 3) Build
-      #    ※ ここでも vcvars64.bat をロードする必要がある
+      # 3) ビルド（build/release）
       # --------------------------------------------------
       - name: Build (Release)
         run: |
@@ -44,23 +43,30 @@ jobs:
           "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" --build build/release --config Release
 
       # --------------------------------------------------
-      # 4) Test
+      # 4) テスト実行（ctest）
       # --------------------------------------------------
       - name: Run Tests
         run: |
-          call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
-          "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\ctest.exe" --test-dir build/release -C Release --output-on-failure
+          cd build\release
+          ctest -C Release --output-on-failure
 
       # --------------------------------------------------
-      # 5) Artifacts
+      # 5) アーティファクト（exe + DLL + Qt platforms）
       # --------------------------------------------------
       - name: Package artifacts
         run: |
           mkdir artifact
           copy build\release\ImageViewer.exe artifact\
+
+          rem CMakeLists 側の POST_BUILD で Qt / OpenCV の DLL が
+          rem build\release にコピーされている前提で、そのまま同梱
           copy build\release\*.dll artifact\
-          mkdir artifact\platforms
-          copy build\release\platforms\*.dll artifact\platforms\
+
+          rem Qt の platforms ディレクトリがあれば一緒に格納
+          if exist build\release\platforms (
+            mkdir artifact\platforms
+            copy build\release\platforms\*.dll artifact\platforms\
+          )
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4

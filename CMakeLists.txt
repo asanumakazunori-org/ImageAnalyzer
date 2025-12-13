@@ -13,7 +13,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 # ------------------------------------------------------------------
-# vcpkg から依存ライブラリを取得
+# Qt は C:\Qt\6.10.1\msvc2022_64 から、
+# OpenCV / GTest は vcpkg から取得
 # ------------------------------------------------------------------
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 find_package(OpenCV REQUIRED)
@@ -88,31 +89,50 @@ target_link_libraries(ImageViewer PRIVATE
 )
 
 # ------------------------------------------------------------------
-# DLL コピー（vcpkg 依存 DLL だけを自動コピー）
-# 環境変数・固定パスなし。完全自動化。
+# DLL コピー
+#   - vcpkg 由来の DLL（OpenCV など）は $<TARGET_RUNTIME_DLLS> で自動コピー
+#   - Qt の DLL / plugins は C:\Qt\6.10.1\msvc2022_64 から取得
 # ------------------------------------------------------------------
 if(WIN32)
-    # Qt + OpenCV など vcpkg の DLL をすべてコピー
+    # vcpkg 側の DLL（OpenCV など）をコピー
     add_custom_command(TARGET ImageViewer POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E echo "Copy runtime DLLs for ImageViewer..."
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:ImageViewer> $<TARGET_FILE_DIR:ImageViewer>
         COMMAND_EXPAND_LISTS
     )
 
-    # Qt platform plugin のコピー
-    # vcpkg-installed ディレクトリから platforms/ をそのままコピー
-    if (VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
-        set(QT_PLATFORMS_DIR
-            "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/Qt6/plugins/platforms"
+    # ---- Qt のインストールパスを Qt6::Core から逆算 ----
+    get_target_property(_qt_core_location Qt6::Core LOCATION)
+    if(NOT _qt_core_location)
+        get_target_property(_qt_core_location Qt6::Core IMPORTED_LOCATION_RELEASE)
+    endif()
+
+    if(_qt_core_location)
+        # 例: C:/Qt/6.10.1/msvc2022_64/bin/Qt6Core.dll
+        get_filename_component(QT_BIN_DIR  "${_qt_core_location}" DIRECTORY)   # .../bin
+        get_filename_component(QT_ROOT_DIR "${QT_BIN_DIR}" DIRECTORY)          # .../msvc2022_64
+        set(QT_PLUGINS_DIR "${QT_ROOT_DIR}/plugins")
+
+        # Qt の主要 DLL をコピー（必要に応じて追加可能）
+        add_custom_command(TARGET ImageViewer POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E echo "Copy Qt DLLs..."
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${QT_BIN_DIR}/Qt6Core.dll"
+                    "${QT_BIN_DIR}/Qt6Gui.dll"
+                    "${QT_BIN_DIR}/Qt6Widgets.dll"
+                    "$<TARGET_FILE_DIR:ImageViewer>"
         )
 
+        # Qt platform plugins (platforms/) をコピー
         add_custom_command(TARGET ImageViewer POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E echo "Copy Qt platform plugins..."
             COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:ImageViewer>/platforms"
             COMMAND ${CMAKE_COMMAND} -E copy_directory
-                "${QT_PLATFORMS_DIR}"
-                "$<TARGET_FILE_DIR:ImageViewer>/platforms"
+                    "${QT_PLUGINS_DIR}/platforms"
+                    "$<TARGET_FILE_DIR:ImageViewer>/platforms"
         )
+    else()
+        message(WARNING "Could not determine Qt6::Core location. Qt DLLs/plugins will not be copied automatically.")
     endif()
 endif()
 
